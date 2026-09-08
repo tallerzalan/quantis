@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+portfolio.json
+watchlist.json
+node_modules/
+frontend/dist/
+
+# local tooling / editor state
+.claude/
+.impeccable/
+.vscode/
+.idea/

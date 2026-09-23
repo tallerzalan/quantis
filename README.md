@@ -152,6 +152,8 @@ For **any** Yahoo ticker:
   golden cross, 52-week high, gap reversal, volume surge.
 - **Write your own** in a Python code editor (see below).
 - Run on your **watchlist** or a **sector basket** (Semis, Mega Tech, Fintech, …).
+- Close-generated signals execute at the **next session's open**; configurable
+  slippage, bid–ask spread, and commission are deducted from every trade.
 - Results **graded A–F**, then **stress-tested with a 1,000-run Monte Carlo
   robustness check**: chance of loss, chance of beating SPY, and realistic
   best/worst final account values.
@@ -196,7 +198,8 @@ def strategy(data, ind):
 `ind` exposes `rsi, ema, macd, atr, roc, bollinger_percent_b, adx,
 relative_volume, vwap, stochastic, obv, keltner_channels, atr_trailing_stop,
 ichimoku`. Stops, max-hold, and position caps from the form still apply on top of
-your entry/exit logic.
+your entry/exit logic. A `True` value on date *t* is a signal known at that
+day's close and is executed at the next available session's open.
 
 ---
 

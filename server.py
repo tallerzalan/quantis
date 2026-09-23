@@ -563,6 +563,8 @@ def api_backtest(payload: dict = Body(...)):
                 max_hold_days=int(p.get("hold_days", 7)),
                 max_positions=int(p.get("top_n", 5)),
                 slippage_bps=float(p.get("slippage", 5)),
+                spread_bps=float(p.get("spread", 2)),
+                commission_bps=float(p.get("commission", 1)),
                 capital=capital,
             )
             equity, trades = bt.run_signal_trades(wpanel, entries, exits, cfg)
@@ -571,7 +573,9 @@ def api_backtest(payload: dict = Body(...)):
             equity, _ = bt.run_rebalance(
                 wpanel["close"], lookback=int(p.get("lookback", 20)),
                 top_n=int(p.get("top_n", 5)), hold_days=int(p.get("hold_days", 5)),
-                slippage_bps=float(p.get("slippage", 5)), capital=capital,
+                slippage_bps=float(p.get("slippage", 5)),
+                spread_bps=float(p.get("spread", 2)),
+                commission_bps=float(p.get("commission", 1)), capital=capital,
             )
         else:
             if key not in strat.STRATEGIES:
@@ -583,6 +587,8 @@ def api_backtest(payload: dict = Body(...)):
                 max_hold_days=int(p.get("hold_days", 7)),
                 max_positions=int(p.get("top_n", 5)),
                 slippage_bps=float(p.get("slippage", 5)),
+                spread_bps=float(p.get("spread", 2)),
+                commission_bps=float(p.get("commission", 1)),
                 capital=capital,
             )
             equity, trades = bt.run_signal_trades(wpanel, entries, exits, cfg)
@@ -611,6 +617,7 @@ def api_backtest(payload: dict = Body(...)):
             mcarlo = None
     trade_rows = [
         {**t, "entry_date": str(pd.Timestamp(t["entry_date"]).date()),
+         "signal_date": str(pd.Timestamp(t["signal_date"]).date()),
          "exit_date": str(pd.Timestamp(t["exit_date"]).date())}
         for t in (trades or [])[-100:]
     ]

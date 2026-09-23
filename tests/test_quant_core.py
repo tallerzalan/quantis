@@ -102,7 +102,10 @@ def test_buy_hold_matches_manual(panel):
 def test_flat_prices_yield_zero_pnl():
     dates = pd.bdate_range("2024-01-01", periods=100)
     flat = pd.DataFrame(100.0, index=dates, columns=["X", "Y", "Z"])
-    equity, _ = bt.run_rebalance(flat, lookback=10, top_n=2, hold_days=5, slippage_bps=0.0)
+    equity, _ = bt.run_rebalance(
+        flat, lookback=10, top_n=2, hold_days=5,
+        slippage_bps=0.0, spread_bps=0.0, commission_bps=0.0,
+    )
     assert equity.iloc[-1] == pytest.approx(100.0)
 
 
@@ -133,6 +136,68 @@ def test_signal_trades_stop_and_accounting(panel):
         # closed P&L plus open-position drift equals total equity change
         assert np.isfinite(pnl_sum)
         assert abs(open_value) < 100.0 * 5  # sanity: no runaway accounting
+
+
+def test_signal_executes_at_next_open_not_signal_close():
+    dates = pd.bdate_range("2024-01-01", periods=25)
+    close = pd.DataFrame({"X": np.full(25, 100.0)}, index=dates)
+    open_ = close.copy()
+    open_.iloc[16, 0] = 150.0
+    open_.iloc[18, 0] = 175.0
+    panel = {
+        "close": close,
+        "open": open_,
+        "high": close + 1.0,
+        "low": close - 1.0,
+    }
+    entries = pd.DataFrame(False, index=dates, columns=["X"])
+    exits = entries.copy()
+    entries.iloc[15, 0] = True
+    exits.iloc[17, 0] = True
+    cfg = bt.TradeConfig(
+        capital=100.0, max_positions=1, stop_atr_mult=100.0,
+        slippage_bps=0.0, spread_bps=0.0, commission_bps=0.0,
+    )
+
+    _, trades = bt.run_signal_trades(panel, entries, exits, cfg)
+
+    assert len(trades) == 1
+    assert trades[0]["signal_date"] == dates[15]
+    assert trades[0]["entry_date"] == dates[16]
+    assert trades[0]["entry"] == pytest.approx(150.0)
+    assert trades[0]["exit_date"] == dates[18]
+    assert trades[0]["exit"] == pytest.approx(175.0)
+
+
+def test_signal_trade_costs_are_net_and_auditable():
+    dates = pd.bdate_range("2024-01-01", periods=25)
+    close = pd.DataFrame({"X": np.full(25, 100.0)}, index=dates)
+    panel = {
+        "close": close,
+        "open": close.copy(),
+        "high": close + 1.0,
+        "low": close - 1.0,
+    }
+    entries = pd.DataFrame(False, index=dates, columns=["X"])
+    exits = entries.copy()
+    entries.iloc[15, 0] = True
+    exits.iloc[17, 0] = True
+    cfg = bt.TradeConfig(
+        capital=100.0, max_positions=1, stop_atr_mult=100.0,
+        slippage_bps=10.0, spread_bps=20.0, commission_bps=10.0,
+    )
+
+    _, trades = bt.run_signal_trades(panel, entries, exits, cfg)
+
+    assert len(trades) == 1
+    assert trades[0]["costs"] > 0
+    assert trades[0]["pnl"] == pytest.approx(-trades[0]["costs"])
+    assert trades[0]["return_pct"] < 0
+
+
+def test_trade_config_rejects_impossible_costs():
+    with pytest.raises(ValueError, match="cannot be negative"):
+        bt.TradeConfig(slippage_bps=-1.0)
 
 
 def test_perf_stats_fields(panel):

@@ -15,7 +15,7 @@ export default function Backtest({ wlVersion, capital }) {
   const [custom, setCustom] = useState(false);
   const [code, setCode] = useState("");
   const [universe, setUniverse] = useState("watchlist");
-  const [params, setParams] = useState({ lookback: 20, top_n: 5, hold_days: 5, stop_mult: 1.5, slippage: 5, period: "1y" });
+  const [params, setParams] = useState({ lookback: 20, top_n: 5, hold_days: 5, stop_mult: 1.5, slippage: 5, spread: 2, commission: 1, period: "1y" });
   const [result, setResult] = useState(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState(null);
@@ -79,7 +79,7 @@ export default function Backtest({ wlVersion, capital }) {
                 basicSetup={{ foldGutter: false, autocompletion: false }} />
             </div>
             <p className="note" style={{ marginBottom: 0 }}>
-              Return <span className="mono">(entries, exits)</span> — True where you'd buy or sell at that day's close.
+              Return <span className="mono">(entries, exits)</span> — True where a signal is known at that day's close; orders execute at the next session's open.
               Available: <span className="mono">ind.rsi · ind.ema · ind.macd · ind.atr · ind.roc · ind.bollinger_percent_b · ind.adx · ind.relative_volume · pd · np</span>.
               Stops and holding limits below still apply.
             </p>
@@ -114,6 +114,12 @@ export default function Backtest({ wlVersion, capital }) {
           )}
           <label className="field">Slippage (bps/side)
             <input type="number" min="0" max="50" value={params.slippage} onChange={setP("slippage")} />
+          </label>
+          <label className="field">Full spread (bps)
+            <input type="number" min="0" max="100" step="0.5" value={params.spread} onChange={setP("spread")} />
+          </label>
+          <label className="field">Commission (bps/side)
+            <input type="number" min="0" max="50" step="0.1" value={params.commission} onChange={setP("commission")} />
           </label>
           <label className="field">History
             <select value={params.period} onChange={setP("period")}>
@@ -192,12 +198,14 @@ export default function Backtest({ wlVersion, capital }) {
                   initialSort={{ key: "exit_date", dir: -1 }}
                   columns={[
                     { key: "ticker", label: "Ticker", render: (r) => <span className="tick">{r.ticker}</span> },
+                    { key: "signal_date", label: "Signal" },
                     { key: "entry_date", label: "In" },
                     { key: "exit_date", label: "Out" },
                     { key: "entry", label: "Entry", render: (r) => fmt$(r.entry) },
                     { key: "exit", label: "Exit", render: (r) => fmt$(r.exit) },
                     { key: "return_pct", label: "Return", render: (r) => fmtPct(r.return_pct * 100), className: (r) => (r.return_pct >= 0 ? "up mono" : "down mono") },
                     { key: "pnl", label: "P&L", render: (r) => fmt$(r.pnl), className: (r) => (r.pnl >= 0 ? "up mono" : "down mono") },
+                    { key: "costs", label: "Costs", render: (r) => fmt$(r.costs) },
                     { key: "reason", label: "Exit because", render: (r) => ({ stop: "stop-loss", signal: "sell signal", timeout: "time limit" }[r.reason] || r.reason) },
                     { key: "days", label: "Days" },
                   ]}
